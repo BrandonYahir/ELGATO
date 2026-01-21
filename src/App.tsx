@@ -40,6 +40,17 @@ const App = () => {
     return turn === 'player' ? 'Tu turno (X)' : 'Turno de la GPU (O)'
   }, [roundResult, seriesOver, totalWinner, turn])
 
+  const finalOutcome = useMemo(() => {
+    if (!seriesOver) return null
+    if (totalWinner === 'player') {
+      return { text: 'Ganaste el juego', symbol: ':)', tone: 'win' as const }
+    }
+    if (totalWinner === 'cpu') {
+      return { text: 'La GPU gana el juego', symbol: ':(', tone: 'loss' as const }
+    }
+    return { text: 'Empate total', symbol: '?', tone: 'draw' as const }
+  }, [seriesOver, totalWinner])
+
   const finishRound = (winner: 'player' | 'cpu' | 'draw') => {
     setRoundResult(winner)
     if (winner === 'draw') return
@@ -195,6 +206,24 @@ const App = () => {
           </div>
         </aside>
       </section>
+
+      {finalOutcome && (
+        <div className="modal-overlay" role="presentation">
+          <div
+            className={`modal-card ${finalOutcome.tone}`}
+            role="dialog"
+            aria-live="polite"
+            aria-label="Resultado final"
+          >
+            <div className="modal-symbol">{finalOutcome.symbol}</div>
+            <h2>{finalOutcome.text}</h2>
+            <p className="modal-subtitle">Gracias por jugar.</p>
+            <button className="primary" onClick={handleResetSeries} type="button">
+              Reiniciar serie
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
