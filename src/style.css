@@ -234,6 +234,67 @@ button.ghost:hover {
   color: #8a4a3a;
 }
 
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: rgba(25, 20, 16, 0.5);
+  backdrop-filter: blur(6px);
+  padding: 24px;
+  z-index: 20;
+}
+
+.modal-card {
+  width: min(420px, 100%);
+  padding: 28px;
+  border-radius: 24px;
+  text-align: center;
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid rgba(102, 78, 52, 0.2);
+  box-shadow: 0 24px 60px rgba(25, 20, 16, 0.25);
+  display: grid;
+  gap: 12px;
+  justify-items: center;
+}
+
+.modal-card h2 {
+  margin: 0;
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 1.8rem;
+}
+
+.modal-symbol {
+  width: 72px;
+  height: 72px;
+  border-radius: 22px;
+  display: grid;
+  place-items: center;
+  font-size: 2.2rem;
+  font-family: 'Space Grotesk', sans-serif;
+  border: 1px solid rgba(102, 78, 52, 0.2);
+}
+
+.modal-subtitle {
+  margin: 0 0 8px;
+  color: #4a4036;
+}
+
+.modal-card.win .modal-symbol {
+  background: #e4f1ea;
+  color: #2b473a;
+}
+
+.modal-card.loss .modal-symbol {
+  background: #f6e2de;
+  color: #8a4a3a;
+}
+
+.modal-card.draw .modal-symbol {
+  background: #efe7da;
+  color: #745b45;
+}
+
 @media (max-width: 860px) {
   .arena {
     grid-template-columns: 1fr;
