@@ -6,7 +6,7 @@ import App from './App'
 describe('App', () => {
   it('renders initial status', () => {
     render(<App />)
-    expect(screen.getByText('Tu turno (X)')).toBeInTheDocument()
+    expect(screen.getByText('Es tu turno (X)')).toBeInTheDocument()
   })
 
   it('places X and then O after a player move', async () => {
