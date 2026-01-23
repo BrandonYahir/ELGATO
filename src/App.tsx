@@ -1,11 +1,23 @@
 import { useEffect, useMemo, useState } from 'react'
 import { getWinner, isBoardFull, pickCpuMove, type Mark } from './gameLogic'
+import AppView from './AppView'
 
 type Turn = 'player' | 'cpu'
 type RoundResult = 'player' | 'cpu' | 'draw' | null
+type HistoryEntry = { round: number; result: Exclude<RoundResult, null> }
+type PersistedState = {
+  board: Mark[]
+  turn: Turn
+  round: number
+  scores: { player: number; cpu: number }
+  roundResult: RoundResult
+  totalWinner: 'player' | 'cpu' | null
+  history: HistoryEntry[]
+}
 
 const createEmptyBoard = (): Mark[] => Array(9).fill(null)
-const MAX_WINS = 2
+const MAX_WINS = 3
+const STORAGE_KEY = 'gato-series-v2'
 
 const formatResult = (result: RoundResult): string => {
   if (result === 'player') return 'Ganaste la ronda'
@@ -20,16 +32,103 @@ const formatTotalWinner = (winner: 'player' | 'cpu' | null): string => {
   return 'Serie empatada, sin ganador'
 }
 
+const formatHistoryResult = (result: Exclude<RoundResult, null>): string => {
+  if (result === 'player') return 'Victoria'
+  if (result === 'cpu') return 'Derrota'
+  return 'Empate'
+}
+
+const loadPersistedState = (): PersistedState | null => {
+  if (typeof window === 'undefined') return null
+  const raw = window.localStorage.getItem(STORAGE_KEY)
+  if (!raw) return null
+
+  try {
+    const parsed = JSON.parse(raw) as Partial<PersistedState>
+    const board = Array.isArray(parsed.board) ? parsed.board : null
+    const validBoard =
+      board &&
+      board.length === 9 &&
+      board.every((cell) => cell === 'X' || cell === 'O' || cell === null)
+        ? board
+        : null
+
+    const scores = parsed.scores
+    const validScores =
+      scores &&
+      typeof scores.player === 'number' &&
+      typeof scores.cpu === 'number'
+        ? scores
+        : null
+
+    const round = typeof parsed.round === 'number' ? parsed.round : null
+    const turn = parsed.turn === 'player' || parsed.turn === 'cpu' ? parsed.turn : null
+    const roundResult =
+      parsed.roundResult === 'player' ||
+      parsed.roundResult === 'cpu' ||
+      parsed.roundResult === 'draw' ||
+      parsed.roundResult === null
+        ? parsed.roundResult
+        : null
+    const totalWinner =
+      parsed.totalWinner === 'player' || parsed.totalWinner === 'cpu'
+        ? parsed.totalWinner
+        : parsed.totalWinner === null
+          ? null
+          : null
+
+    const history = Array.isArray(parsed.history) ? parsed.history : []
+    const validHistory = history.filter((entry) => {
+      if (!entry || typeof entry !== 'object') return false
+      if (typeof entry.round !== 'number') return false
+      return entry.result === 'player' || entry.result === 'cpu' || entry.result === 'draw'
+    }) as HistoryEntry[]
+
+    if (!validBoard || !validScores || !round || !turn) return null
+
+    return {
+      board: validBoard,
+      turn,
+      round,
+      scores: validScores,
+      roundResult,
+      totalWinner,
+      history: validHistory,
+    }
+  } catch {
+    return null
+  }
+}
+
 const App = () => {
-  const [board, setBoard] = useState<Mark[]>(() => createEmptyBoard())
-  const [turn, setTurn] = useState<Turn>('player')
-  const [round, setRound] = useState(1)
-  const [scores, setScores] = useState({ player: 0, cpu: 0 })
-  const [roundResult, setRoundResult] = useState<RoundResult>(null)
-  const [totalWinner, setTotalWinner] = useState<'player' | 'cpu' | null>(null)
+  const initialState = useMemo(
+    () =>
+      loadPersistedState() ?? {
+        board: createEmptyBoard(),
+        turn: 'player' as Turn,
+        round: 1,
+        scores: { player: 0, cpu: 0 },
+        roundResult: null,
+        totalWinner: null,
+        history: [],
+      },
+    [],
+  )
+
+  const [board, setBoard] = useState<Mark[]>(() => initialState.board)
+  const [turn, setTurn] = useState<Turn>(() => initialState.turn)
+  const [round, setRound] = useState(() => initialState.round)
+  const [scores, setScores] = useState(() => initialState.scores)
+  const [roundResult, setRoundResult] = useState<RoundResult>(
+    () => initialState.roundResult,
+  )
+  const [totalWinner, setTotalWinner] = useState<'player' | 'cpu' | null>(
+    () => initialState.totalWinner,
+  )
+  const [history, setHistory] = useState<HistoryEntry[]>(() => initialState.history)
 
   const seriesOver = useMemo(
-    () => totalWinner !== null || (roundResult !== null && round >= 3),
+    () => totalWinner !== null || (roundResult !== null && round >= 5),
     [round, roundResult, totalWinner],
   )
 
@@ -51,8 +150,20 @@ const App = () => {
     return { text: 'Empate total', symbol: '?', tone: 'draw' as const }
   }, [seriesOver, totalWinner])
 
+  const historyItems = useMemo(
+    () =>
+      history.map((entry, index) => ({
+        key: `${entry.round}-${index}`,
+        round: entry.round,
+        result: entry.result,
+        resultLabel: formatHistoryResult(entry.result),
+      })),
+    [history],
+  )
+
   const finishRound = (winner: 'player' | 'cpu' | 'draw') => {
     setRoundResult(winner)
+    setHistory((prev) => [...prev, { round, result: winner }])
     if (winner === 'draw') return
 
     setScores((prev) => {
@@ -118,7 +229,7 @@ const App = () => {
 
   const handleNextRound = () => {
     if (!roundResult || seriesOver) return
-    setRound((prev) => Math.min(prev + 1, 3))
+    setRound((prev) => Math.min(prev + 1, 5))
     setBoard(createEmptyBoard())
     setRoundResult(null)
     setTurn('player')
@@ -131,100 +242,39 @@ const App = () => {
     setScores({ player: 0, cpu: 0 })
     setRoundResult(null)
     setTotalWinner(null)
+    setHistory([])
   }
 
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const snapshot: PersistedState = {
+      board,
+      turn,
+      round,
+      scores,
+      roundResult,
+      totalWinner,
+      history,
+    }
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(snapshot))
+  }, [board, turn, round, scores, roundResult, totalWinner, history])
+
   return (
-    <div className="page">
-      <header className="header">
-        <div className="title-block">
-          <p className="eyebrow">Mejor de 3</p>
-          <h1>Juego del Gato</h1>
-          <p className="sub">
-            Usuario vs GPU. Primero a {MAX_WINS} victorias gana la serie.
-          </p>
-        </div>
-        <div className="scoreboard">
-          <div className="score-card">
-            <span className="label">Jugador</span>
-            <strong>{scores.player}</strong>
-          </div>
-          <div className="score-card">
-            <span className="label">GPU</span>
-            <strong>{scores.cpu}</strong>
-          </div>
-          <div className="score-card score-round">
-            <span className="label">Ronda</span>
-            <strong>{round}</strong>
-          </div>
-        </div>
-      </header>
-
-      <section className="arena">
-        <div className="board" role="grid" aria-label="Tablero del gato">
-          {board.map((cell, index) => (
-            <button
-              key={index}
-              className={`cell ${cell ? 'filled' : ''}`}
-              aria-label={`celda ${index + 1}`}
-              disabled={
-                cell !== null || turn !== 'player' || roundResult !== null || seriesOver
-              }
-              onClick={() => handleCellClick(index)}
-              type="button"
-            >
-              {cell}
-            </button>
-          ))}
-        </div>
-
-        <aside className="panel">
-          <div className="status-card">
-            <span className="label">Estado</span>
-            <p className="status-text">{statusMessage}</p>
-          </div>
-
-          <div className="actions">
-            {!seriesOver && roundResult && (
-              <button className="primary" onClick={handleNextRound} type="button">
-                Siguiente ronda
-              </button>
-            )}
-            <button className="ghost" onClick={handleResetSeries} type="button">
-              Reiniciar serie
-            </button>
-          </div>
-
-          <div className="legend">
-            <div>
-              <span className="mark player">X</span>
-              <span>Jugador</span>
-            </div>
-            <div>
-              <span className="mark cpu">O</span>
-              <span>GPU</span>
-            </div>
-          </div>
-        </aside>
-      </section>
-
-      {finalOutcome && (
-        <div className="modal-overlay" role="presentation">
-          <div
-            className={`modal-card ${finalOutcome.tone}`}
-            role="dialog"
-            aria-live="polite"
-            aria-label="Resultado final"
-          >
-            <div className="modal-symbol">{finalOutcome.symbol}</div>
-            <h2>{finalOutcome.text}</h2>
-            <p className="modal-subtitle">Gracias por jugar.</p>
-            <button className="primary" onClick={handleResetSeries} type="button">
-              Reiniciar serie
-            </button>
-          </div>
-        </div>
-      )}
-    </div>
+    <AppView
+      maxWins={MAX_WINS}
+      scores={scores}
+      round={round}
+      board={board}
+      turn={turn}
+      roundResult={roundResult}
+      seriesOver={seriesOver}
+      statusMessage={statusMessage}
+      historyItems={historyItems}
+      finalOutcome={finalOutcome}
+      onCellClick={handleCellClick}
+      onNextRound={handleNextRound}
+      onResetSeries={handleResetSeries}
+    />
   )
 }
 

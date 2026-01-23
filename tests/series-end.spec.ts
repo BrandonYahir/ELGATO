@@ -13,7 +13,7 @@ const playCpuWinRound = async (page: Page) => {
   await expect(cell(9)).toHaveText('O')
 }
 
-test('series end shows final modal after two CPU wins', async ({ page }) => {
+test('series end shows final modal after three CPU wins', async ({ page }) => {
   await page.goto('/')
 
   await playCpuWinRound(page)
@@ -27,6 +27,13 @@ test('series end shows final modal after two CPU wins', async ({ page }) => {
   await playCpuWinRound(page)
   await expect(page.locator('.score-card', { hasText: 'GPU' }).locator('strong'))
     .toHaveText('2')
+
+  await page.getByRole('button', { name: 'Siguiente ronda' }).click()
+  await expect(page.locator('.score-round').locator('strong')).toHaveText('3')
+
+  await playCpuWinRound(page)
+  await expect(page.locator('.score-card', { hasText: 'GPU' }).locator('strong'))
+    .toHaveText('3')
 
   const modal = page.getByRole('dialog', { name: 'Resultado final' })
   await expect(modal).toBeVisible()

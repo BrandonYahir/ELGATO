@@ -234,6 +234,61 @@ button.ghost:hover {
   color: #8a4a3a;
 }
 
+.history-card {
+  padding: 16px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.8);
+  border: 1px solid rgba(118, 92, 64, 0.18);
+  box-shadow: 0 12px 30px rgba(118, 92, 64, 0.12);
+  display: grid;
+  gap: 12px;
+}
+
+.history-empty {
+  margin: 0;
+  color: #4a4036;
+}
+
+.history-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.history-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 12px;
+  border-radius: 12px;
+  background: rgba(244, 236, 224, 0.8);
+  font-size: 0.9rem;
+}
+
+.history-item.player {
+  background: rgba(228, 241, 234, 0.9);
+}
+
+.history-item.cpu {
+  background: rgba(246, 226, 222, 0.9);
+}
+
+.history-item.draw {
+  background: rgba(239, 231, 218, 0.9);
+}
+
+.history-round {
+  color: #5a4a3a;
+}
+
+.history-result {
+  font-weight: 600;
+  color: #2f271f;
+}
+
 .modal-overlay {
   position: fixed;
   inset: 0;
