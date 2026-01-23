@@ -1,0 +1,157 @@
+import type { Mark } from './gameLogic'
+
+type HistoryItem = {
+  key: string
+  round: number
+  result: 'player' | 'cpu' | 'draw'
+  resultLabel: string
+}
+
+type FinalOutcome = { text: string; symbol: string; tone: 'win' | 'loss' | 'draw' } | null
+
+type AppViewProps = {
+  maxWins: number
+  scores: { player: number; cpu: number }
+  round: number
+  board: Mark[]
+  turn: 'player' | 'cpu'
+  roundResult: 'player' | 'cpu' | 'draw' | null
+  seriesOver: boolean
+  statusMessage: string
+  historyItems: HistoryItem[]
+  finalOutcome: FinalOutcome
+  onCellClick: (index: number) => void
+  onNextRound: () => void
+  onResetSeries: () => void
+}
+
+const AppView = ({
+  maxWins,
+  scores,
+  round,
+  board,
+  turn,
+  roundResult,
+  seriesOver,
+  statusMessage,
+  historyItems,
+  finalOutcome,
+  onCellClick,
+  onNextRound,
+  onResetSeries,
+}: AppViewProps) => {
+  return (
+    <div className="page">
+      <header className="header">
+        <div className="title-block">
+          <p className="eyebrow">Juego del Gato</p>
+          <h1>Mejor de 5</h1>
+          <p className="sub">
+            Usuario vs GPU. Primero a {maxWins} victorias gana la serie.
+          </p>
+        </div>
+        <div className="scoreboard">
+          <div className="score-card">
+            <span className="label">Jugador</span>
+            <strong>{scores.player}</strong>
+          </div>
+          <div className="score-card">
+            <span className="label">GPU</span>
+            <strong>{scores.cpu}</strong>
+          </div>
+          <div className="score-card score-round">
+            <span className="label">Ronda</span>
+            <strong>{round}</strong>
+          </div>
+        </div>
+      </header>
+
+      <section className="arena">
+        <div className="board" role="grid" aria-label="Tablero del gato">
+          {board.map((cell, index) => (
+            <button
+              key={index}
+              className={`cell ${cell ? 'filled' : ''}`}
+              aria-label={`celda ${index + 1}`}
+              disabled={
+                cell !== null || turn !== 'player' || roundResult !== null || seriesOver
+              }
+              onClick={() => onCellClick(index)}
+              type="button"
+            >
+              {cell}
+            </button>
+          ))}
+        </div>
+
+        <aside className="panel">
+          <div className="status-card">
+            <span className="label">Estado</span>
+            <p className="status-text">{statusMessage}</p>
+          </div>
+
+          <div className="actions">
+            {!seriesOver && roundResult && (
+              <button className="primary" onClick={onNextRound} type="button">
+                Siguiente ronda
+              </button>
+            )}
+            <button className="ghost" onClick={onResetSeries} type="button">
+              Reiniciar serie
+            </button>
+          </div>
+
+          <div className="legend">
+            <div>
+              <span className="mark player">X</span>
+              <span>Jugador</span>
+            </div>
+            <div>
+              <span className="mark cpu">O</span>
+              <span>GPU</span>
+            </div>
+          </div>
+
+          <div className="history-card">
+            <span className="label">Historial</span>
+            {historyItems.length === 0 ? (
+              <p className="history-empty">Sin resultados todavÃ­a.</p>
+            ) : (
+              <ul className="history-list">
+                {historyItems.map((entry) => (
+                  <li
+                    key={entry.key}
+                    className={`history-item ${entry.result}`}
+                  >
+                    <span className="history-round">Ronda {entry.round}</span>
+                    <span className="history-result">{entry.resultLabel}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </aside>
+      </section>
+
+      {finalOutcome && (
+        <div className="modal-overlay" role="presentation">
+          <div
+            className={`modal-card ${finalOutcome.tone}`}
+            role="dialog"
+            aria-live="polite"
+            aria-label="Resultado final"
+          >
+            <div className="modal-symbol">{finalOutcome.symbol}</div>
+            <h2>{finalOutcome.text}</h2>
+            <p className="modal-subtitle">Gracias por jugar.</p>
+            <button className="primary" onClick={onResetSeries} type="button">
+              Reiniciar serie
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+export default AppView
