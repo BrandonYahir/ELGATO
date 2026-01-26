@@ -1,4 +1,4 @@
-name: main-protection
+name: main
 
 on:
   pull_request:
@@ -6,7 +6,7 @@ on:
       - main
 
 jobs:
-  main-protection:
+  main:
     runs-on: ubuntu-latest
     steps:
       - name: Fail if PR is not from staging
