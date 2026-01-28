@@ -1,23 +1,49 @@
-import { useEffect, useMemo, useState } from 'react'
-import { getWinner, isBoardFull, pickCpuMove, type Mark } from './gameLogic'
+import { useMemo, useState } from 'react'
 import AppView from './AppView'
+import type { Mark } from './types'
 
 type Turn = 'player' | 'cpu'
 type RoundResult = 'player' | 'cpu' | 'draw' | null
 type HistoryEntry = { round: number; result: Exclude<RoundResult, null> }
-type PersistedState = {
-  board: Mark[]
-  turn: Turn
-  round: number
-  scores: { player: number; cpu: number }
-  roundResult: RoundResult
-  totalWinner: 'player' | 'cpu' | null
-  history: HistoryEntry[]
-}
 
 const createEmptyBoard = (): Mark[] => Array(9).fill(null)
 const MAX_WINS = 3
-const STORAGE_KEY = 'gato-series-v2'
+
+type ApiMoveResponse = {
+  board?: Mark[]
+  move?: number | null
+  winner?: Mark
+  draw?: boolean
+}
+
+const getApiBase = (): string => {
+  const envBase = import.meta.env.VITE_API_URL
+  if (typeof envBase === 'string' && envBase.trim().length > 0) {
+    return envBase.replace(/\/$/, '')
+  }
+  return '/api'
+}
+
+const apiFetch = async <T,>(path: string, options?: RequestInit): Promise<T> => {
+  const response = await fetch(`${getApiBase()}${path}`, {
+    headers: {
+      'Content-Type': 'application/json',
+      ...(options?.headers ?? {}),
+    },
+    ...options,
+  })
+
+  if (!response.ok) {
+    throw new Error(`API error: ${response.status}`)
+  }
+
+  return (await response.json()) as T
+}
+
+const isValidBoard = (value: unknown): value is Mark[] =>
+  Array.isArray(value) &&
+  value.length === 9 &&
+  value.every((cell) => cell === 'X' || cell === 'O' || cell === null)
 
 const formatResult = (result: RoundResult): string => {
   if (result === 'player') return 'Ganaste la ronda'
@@ -38,94 +64,15 @@ const formatHistoryResult = (result: Exclude<RoundResult, null>): string => {
   return 'Empate'
 }
 
-const loadPersistedState = (): PersistedState | null => {
-  if (typeof window === 'undefined') return null
-  const raw = window.localStorage.getItem(STORAGE_KEY)
-  if (!raw) return null
-
-  try {
-    const parsed = JSON.parse(raw) as Partial<PersistedState>
-    const board = Array.isArray(parsed.board) ? parsed.board : null
-    const validBoard =
-      board &&
-      board.length === 9 &&
-      board.every((cell) => cell === 'X' || cell === 'O' || cell === null)
-        ? board
-        : null
-
-    const scores = parsed.scores
-    const validScores =
-      scores &&
-      typeof scores.player === 'number' &&
-      typeof scores.cpu === 'number'
-        ? scores
-        : null
-
-    const round = typeof parsed.round === 'number' ? parsed.round : null
-    const turn = parsed.turn === 'player' || parsed.turn === 'cpu' ? parsed.turn : null
-    const roundResult =
-      parsed.roundResult === 'player' ||
-      parsed.roundResult === 'cpu' ||
-      parsed.roundResult === 'draw' ||
-      parsed.roundResult === null
-        ? parsed.roundResult
-        : null
-    const totalWinner =
-      parsed.totalWinner === 'player' || parsed.totalWinner === 'cpu'
-        ? parsed.totalWinner
-        : parsed.totalWinner === null
-          ? null
-          : null
-
-    const history = Array.isArray(parsed.history) ? parsed.history : []
-    const validHistory = history.filter((entry) => {
-      if (!entry || typeof entry !== 'object') return false
-      if (typeof entry.round !== 'number') return false
-      return entry.result === 'player' || entry.result === 'cpu' || entry.result === 'draw'
-    }) as HistoryEntry[]
-
-    if (!validBoard || !validScores || !round || !turn) return null
-
-    return {
-      board: validBoard,
-      turn,
-      round,
-      scores: validScores,
-      roundResult,
-      totalWinner,
-      history: validHistory,
-    }
-  } catch {
-    return null
-  }
-}
-
 const App = () => {
-  const initialState = useMemo(
-    () =>
-      loadPersistedState() ?? {
-        board: createEmptyBoard(),
-        turn: 'player' as Turn,
-        round: 1,
-        scores: { player: 0, cpu: 0 },
-        roundResult: null,
-        totalWinner: null,
-        history: [],
-      },
-    [],
-  )
-
-  const [board, setBoard] = useState<Mark[]>(() => initialState.board)
-  const [turn, setTurn] = useState<Turn>(() => initialState.turn)
-  const [round, setRound] = useState(() => initialState.round)
-  const [scores, setScores] = useState(() => initialState.scores)
-  const [roundResult, setRoundResult] = useState<RoundResult>(
-    () => initialState.roundResult,
-  )
-  const [totalWinner, setTotalWinner] = useState<'player' | 'cpu' | null>(
-    () => initialState.totalWinner,
-  )
-  const [history, setHistory] = useState<HistoryEntry[]>(() => initialState.history)
+  const [board, setBoard] = useState<Mark[]>(() => createEmptyBoard())
+  const [turn, setTurn] = useState<Turn>('player')
+  const [round, setRound] = useState(1)
+  const [scores, setScores] = useState({ player: 0, cpu: 0 })
+  const [roundResult, setRoundResult] = useState<RoundResult>(null)
+  const [totalWinner, setTotalWinner] = useState<'player' | 'cpu' | null>(null)
+  const [history, setHistory] = useState<HistoryEntry[]>([])
+  const [isRequestPending, setIsRequestPending] = useState(false)
 
   const seriesOver = useMemo(
     () => totalWinner !== null || (roundResult !== null && round >= 5),
@@ -175,60 +122,45 @@ const App = () => {
     })
   }
 
-  const handleCellClick = (index: number) => {
-    if (turn !== 'player' || roundResult || seriesOver) return
+  const handleCellClick = async (index: number) => {
+    if (turn !== 'player' || roundResult || seriesOver || isRequestPending) return
     if (board[index] !== null) return
 
+    const previousBoard = board
     const nextBoard = [...board]
     nextBoard[index] = 'X'
     setBoard(nextBoard)
-
-    const winner = getWinner(nextBoard)
-    if (winner === 'X') {
-      finishRound('player')
-      return
-    }
-
-    if (isBoardFull(nextBoard)) {
-      finishRound('draw')
-      return
-    }
-
     setTurn('cpu')
+    setIsRequestPending(true)
+
+    try {
+      const data = await apiFetch<ApiMoveResponse>('/cpu-move', {
+        method: 'POST',
+        body: JSON.stringify({ board: nextBoard }),
+      })
+
+      const resolvedBoard = isValidBoard(data.board) ? data.board : nextBoard
+      setBoard(resolvedBoard)
+
+      if (data.winner === 'X') {
+        finishRound('player')
+      } else if (data.winner === 'O') {
+        finishRound('cpu')
+      } else if (data.draw) {
+        finishRound('draw')
+      }
+
+      setTurn('player')
+    } catch {
+      setBoard(previousBoard)
+      setTurn('player')
+    } finally {
+      setIsRequestPending(false)
+    }
   }
 
-  useEffect(() => {
-    if (turn !== 'cpu' || roundResult || seriesOver) return
-
-    const move = pickCpuMove(board)
-    if (move === null) {
-      finishRound('draw')
-      setTurn('player')
-      return
-    }
-
-    const nextBoard = [...board]
-    nextBoard[move] = 'O'
-    setBoard(nextBoard)
-
-    const winner = getWinner(nextBoard)
-    if (winner === 'O') {
-      finishRound('cpu')
-      setTurn('player')
-      return
-    }
-
-    if (isBoardFull(nextBoard)) {
-      finishRound('draw')
-      setTurn('player')
-      return
-    }
-
-    setTurn('player')
-  }, [board, roundResult, seriesOver, turn])
-
   const handleNextRound = () => {
-    if (!roundResult || seriesOver) return
+    if (!roundResult || seriesOver || isRequestPending) return
     setRound((prev) => Math.min(prev + 1, 5))
     setBoard(createEmptyBoard())
     setRoundResult(null)
@@ -236,6 +168,7 @@ const App = () => {
   }
 
   const handleResetSeries = () => {
+    if (isRequestPending) return
     setBoard(createEmptyBoard())
     setTurn('player')
     setRound(1)
@@ -244,20 +177,6 @@ const App = () => {
     setTotalWinner(null)
     setHistory([])
   }
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return
-    const snapshot: PersistedState = {
-      board,
-      turn,
-      round,
-      scores,
-      roundResult,
-      totalWinner,
-      history,
-    }
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(snapshot))
-  }, [board, turn, round, scores, roundResult, totalWinner, history])
 
   return (
     <AppView

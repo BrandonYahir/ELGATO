@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
+import { mockCpuApi } from './mock-api'
 
 const playCpuWinRound = async (page: Page) => {
   const cell = (index: number) => page.getByRole('button', { name: `celda ${index}` })
@@ -14,6 +15,17 @@ const playCpuWinRound = async (page: Page) => {
 }
 
 test('series end shows final modal after three CPU wins', async ({ page }) => {
+  await mockCpuApi(page, [
+    { cpuCell: 5 },
+    { cpuCell: 1 },
+    { cpuCell: 9, winner: 'O' },
+    { cpuCell: 5 },
+    { cpuCell: 1 },
+    { cpuCell: 9, winner: 'O' },
+    { cpuCell: 5 },
+    { cpuCell: 1 },
+    { cpuCell: 9, winner: 'O' },
+  ])
   await page.goto('/')
 
   await playCpuWinRound(page)

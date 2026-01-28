@@ -1,4 +1,4 @@
-import type { Mark } from './gameLogic'
+import type { Mark } from './types'
 
 type HistoryItem = {
   key: string
