@@ -18,7 +18,7 @@ describe('App', () => {
   })
 
   it('places X and then O after a player move', async () => {
-    const fetchMock = vi.mocked(global.fetch)
+    const fetchMock = vi.mocked(globalThis.fetch)
     fetchMock.mockResolvedValueOnce({
       ok: true,
       json: async () => ({

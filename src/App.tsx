@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import AppView from './AppView'
-import type { Mark } from './types'
+import type { Difficulty, Mark } from './types'
 
 type Turn = 'player' | 'cpu'
 type RoundResult = 'player' | 'cpu' | 'draw' | null
@@ -15,6 +15,8 @@ type ApiMoveResponse = {
   winner?: Mark
   draw?: boolean
 }
+
+type PlayerMoveHistory = number[][]
 
 const getApiBase = (): string => {
   const envBase = import.meta.env.VITE_API_URL
@@ -73,6 +75,9 @@ const App = () => {
   const [totalWinner, setTotalWinner] = useState<'player' | 'cpu' | null>(null)
   const [history, setHistory] = useState<HistoryEntry[]>([])
   const [isRequestPending, setIsRequestPending] = useState(false)
+  const [difficulty, setDifficulty] = useState<Difficulty>('medium')
+  const [currentPlayerMoves, setCurrentPlayerMoves] = useState<number[]>([])
+  const [playerMoveHistory, setPlayerMoveHistory] = useState<PlayerMoveHistory>([])
 
   const seriesOver = useMemo(
     () => totalWinner !== null || (roundResult !== null && round >= 5),
@@ -111,6 +116,12 @@ const App = () => {
   const finishRound = (winner: 'player' | 'cpu' | 'draw') => {
     setRoundResult(winner)
     setHistory((prev) => [...prev, { round, result: winner }])
+    setPlayerMoveHistory((prev) => {
+      if (currentPlayerMoves.length === 0) return prev
+      const next = [...prev, currentPlayerMoves]
+      return next.slice(-5)
+    })
+    setCurrentPlayerMoves([])
     if (winner === 'draw') return
 
     setScores((prev) => {
@@ -130,13 +141,18 @@ const App = () => {
     const nextBoard = [...board]
     nextBoard[index] = 'X'
     setBoard(nextBoard)
+    setCurrentPlayerMoves((prev) => [...prev, index])
     setTurn('cpu')
     setIsRequestPending(true)
 
     try {
       const data = await apiFetch<ApiMoveResponse>('/cpu-move', {
         method: 'POST',
-        body: JSON.stringify({ board: nextBoard }),
+        body: JSON.stringify({
+          board: nextBoard,
+          difficulty,
+          history: playerMoveHistory,
+        }),
       })
 
       const resolvedBoard = isValidBoard(data.board) ? data.board : nextBoard
@@ -164,6 +180,7 @@ const App = () => {
     setRound((prev) => Math.min(prev + 1, 5))
     setBoard(createEmptyBoard())
     setRoundResult(null)
+    setCurrentPlayerMoves([])
     setTurn('player')
   }
 
@@ -176,6 +193,8 @@ const App = () => {
     setRoundResult(null)
     setTotalWinner(null)
     setHistory([])
+    setCurrentPlayerMoves([])
+    setPlayerMoveHistory([])
   }
 
   return (
@@ -190,6 +209,8 @@ const App = () => {
       statusMessage={statusMessage}
       historyItems={historyItems}
       finalOutcome={finalOutcome}
+      difficulty={difficulty}
+      onDifficultyChange={setDifficulty}
       onCellClick={handleCellClick}
       onNextRound={handleNextRound}
       onResetSeries={handleResetSeries}

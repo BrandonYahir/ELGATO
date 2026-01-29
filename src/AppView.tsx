@@ -1,4 +1,4 @@
-import type { Mark } from './types'
+import type { Difficulty, Mark } from './types'
 
 type HistoryItem = {
   key: string
@@ -20,6 +20,8 @@ type AppViewProps = {
   statusMessage: string
   historyItems: HistoryItem[]
   finalOutcome: FinalOutcome
+  difficulty: Difficulty
+  onDifficultyChange: (value: Difficulty) => void
   onCellClick: (index: number) => void
   onNextRound: () => void
   onResetSeries: () => void
@@ -36,6 +38,8 @@ const AppView = ({
   statusMessage,
   historyItems,
   finalOutcome,
+  difficulty,
+  onDifficultyChange,
   onCellClick,
   onNextRound,
   onResetSeries,
@@ -88,6 +92,21 @@ const AppView = ({
           <div className="status-card">
             <span className="label">Estado</span>
             <p className="status-text">{statusMessage}</p>
+          </div>
+
+          <div className="difficulty-card">
+            <span className="label">Dificultad CPU</span>
+            <div className="difficulty-control">
+              <select
+                aria-label="Seleccionar dificultad"
+                value={difficulty}
+                onChange={(event) => onDifficultyChange(event.target.value as Difficulty)}
+              >
+                <option value="easy">Fácil</option>
+                <option value="medium">Media</option>
+                <option value="hard">Difícil (Gemini)</option>
+              </select>
+            </div>
           </div>
 
           <div className="actions">
