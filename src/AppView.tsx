@@ -18,6 +18,8 @@ type AppViewProps = {
   roundResult: 'player' | 'cpu' | 'draw' | null
   seriesOver: boolean
   statusMessage: string
+  notice: string | null
+  onDismissNotice: () => void
   historyItems: HistoryItem[]
   finalOutcome: FinalOutcome
   difficulty: Difficulty
@@ -36,6 +38,8 @@ const AppView = ({
   roundResult,
   seriesOver,
   statusMessage,
+  notice,
+  onDismissNotice,
   historyItems,
   finalOutcome,
   difficulty,
@@ -93,6 +97,16 @@ const AppView = ({
             <span className="label">Estado</span>
             <p className="status-text">{statusMessage}</p>
           </div>
+
+          {notice && (
+            <div className="alert-card" role="status" aria-live="polite">
+              <span className="label">Aviso</span>
+              <p>{notice}</p>
+              <button className="alert-dismiss" onClick={onDismissNotice} type="button">
+                Entendido
+              </button>
+            </div>
+          )}
 
           <div className="difficulty-card">
             <span className="label">Dificultad CPU</span>

@@ -188,6 +188,37 @@ body {
   border: 1px solid rgba(255, 255, 255, 0.15);
 }
 
+.alert-card {
+  padding: 16px;
+  border-radius: 18px;
+  background: rgba(255, 248, 219, 0.95);
+  border: 1px solid rgba(154, 118, 47, 0.3);
+  color: #3c2c12;
+  display: grid;
+  gap: 8px;
+  box-shadow: 0 12px 26px rgba(118, 92, 64, 0.12);
+}
+
+.alert-card p {
+  margin: 0;
+}
+
+.alert-dismiss {
+  border: none;
+  border-radius: 999px;
+  padding: 8px 14px;
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 0.9rem;
+  cursor: pointer;
+  background: #2b473a;
+  color: #f3efe8;
+  align-self: flex-start;
+}
+
+.alert-dismiss:hover {
+  transform: translateY(-1px);
+}
+
 .status-text {
   margin: 8px 0 0;
   font-family: 'Space Grotesk', sans-serif;

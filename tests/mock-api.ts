@@ -5,6 +5,8 @@ type CpuStep = {
   cpuCell?: number
   winner?: Mark
   draw?: boolean
+  geminiFallback?: boolean
+  difficultyUsed?: 'easy' | 'medium' | 'hard'
 }
 
 const toBoard = (value: unknown): Mark[] => {
@@ -42,6 +44,8 @@ export const mockCpuApi = async (page: Page, steps: CpuStep[]) => {
       ...(typeof step.cpuCell === 'number' ? { move: step.cpuCell - 1 } : {}),
       ...(step.winner ? { winner: step.winner } : {}),
       ...(step.draw ? { draw: true } : {}),
+      ...(step.geminiFallback ? { geminiFallback: true } : {}),
+      ...(step.difficultyUsed ? { difficultyUsed: step.difficultyUsed } : {}),
     }
 
     await route.fulfill({

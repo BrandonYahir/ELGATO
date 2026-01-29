@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import AppView from './AppView'
 import type { Difficulty, Mark } from './types'
 
@@ -14,6 +14,8 @@ type ApiMoveResponse = {
   move?: number | null
   winner?: Mark
   draw?: boolean
+  difficultyUsed?: Difficulty
+  geminiFallback?: boolean
 }
 
 type PlayerMoveHistory = number[][]
@@ -78,6 +80,15 @@ const App = () => {
   const [difficulty, setDifficulty] = useState<Difficulty>('medium')
   const [currentPlayerMoves, setCurrentPlayerMoves] = useState<number[]>([])
   const [playerMoveHistory, setPlayerMoveHistory] = useState<PlayerMoveHistory>([])
+  const [notice, setNotice] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!notice) return
+    const timer = window.setTimeout(() => {
+      setNotice(null)
+    }, 5000)
+    return () => window.clearTimeout(timer)
+  }, [notice])
 
   const seriesOver = useMemo(
     () => totalWinner !== null || (roundResult !== null && round >= 5),
@@ -166,6 +177,13 @@ const App = () => {
         finishRound('draw')
       }
 
+      if (data.geminiFallback) {
+        setNotice(
+          'Se agotaron las peticiones disponibles de Gemini. La dificultad cambiara a Media.',
+        )
+        setDifficulty('medium')
+      }
+
       setTurn('player')
     } catch {
       setBoard(previousBoard)
@@ -195,6 +213,7 @@ const App = () => {
     setHistory([])
     setCurrentPlayerMoves([])
     setPlayerMoveHistory([])
+    setNotice(null)
   }
 
   return (
@@ -207,6 +226,8 @@ const App = () => {
       roundResult={roundResult}
       seriesOver={seriesOver}
       statusMessage={statusMessage}
+      notice={notice}
+      onDismissNotice={() => setNotice(null)}
       historyItems={historyItems}
       finalOutcome={finalOutcome}
       difficulty={difficulty}
