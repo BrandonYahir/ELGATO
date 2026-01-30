@@ -1,6 +1,8 @@
 import { expect, test } from '@playwright/test'
+import { mockCpuApi } from './mock-api'
 
 test('player move marks X, disables cell 1, and changes turn', async ({ page }) => {
+  await mockCpuApi(page, [{ cpuCell: 5 }])
   await page.goto('/')
 
   const status = page.locator('.status-text')

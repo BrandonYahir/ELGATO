@@ -15,6 +15,16 @@ npm run dev
 ```
 Luego abre `http://127.0.0.1:5173`.
 
+## Backend
+Este frontend consume el backend Express en `http://localhost:3001`.
+
+Configura la variable de entorno:
+```bash
+VITE_API_URL=http://localhost:3001
+```
+
+En desarrollo puedes omitir la variable y usar el proxy de Vite con rutas `/api`.
+
 ## Build y previsualizacion
 ```bash
 npm run build
