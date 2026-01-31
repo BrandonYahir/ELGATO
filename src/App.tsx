@@ -5,9 +5,11 @@ import type { Difficulty, Mark } from './types'
 type Turn = 'player' | 'cpu'
 type RoundResult = 'player' | 'cpu' | 'draw' | null
 type HistoryEntry = { round: number; result: Exclude<RoundResult, null> }
+type Theme = 'light' | 'dark'
 
 const createEmptyBoard = (): Mark[] => Array(9).fill(null)
 const MAX_WINS = 3
+const THEME_STORAGE_KEY = 'theme'
 
 type ApiMoveResponse = {
   board?: Mark[]
@@ -68,6 +70,14 @@ const formatHistoryResult = (result: Exclude<RoundResult, null>): string => {
   return 'Empate'
 }
 
+const getInitialTheme = (): Theme => {
+  if (typeof window === 'undefined') return 'light'
+  const stored = window.localStorage.getItem(THEME_STORAGE_KEY)
+  if (stored === 'light' || stored === 'dark') return stored
+  if (window.matchMedia?.('(prefers-color-scheme: dark)').matches) return 'dark'
+  return 'light'
+}
+
 const App = () => {
   const [board, setBoard] = useState<Mark[]>(() => createEmptyBoard())
   const [turn, setTurn] = useState<Turn>('player')
@@ -81,6 +91,7 @@ const App = () => {
   const [currentPlayerMoves, setCurrentPlayerMoves] = useState<number[]>([])
   const [playerMoveHistory, setPlayerMoveHistory] = useState<PlayerMoveHistory>([])
   const [notice, setNotice] = useState<string | null>(null)
+  const [theme, setTheme] = useState<Theme>(() => getInitialTheme())
 
   useEffect(() => {
     if (!notice) return
@@ -89,6 +100,11 @@ const App = () => {
     }, 5000)
     return () => window.clearTimeout(timer)
   }, [notice])
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme
+    window.localStorage.setItem(THEME_STORAGE_KEY, theme)
+  }, [theme])
 
   const seriesOver = useMemo(
     () => totalWinner !== null || (roundResult !== null && round >= 5),
@@ -232,6 +248,10 @@ const App = () => {
       finalOutcome={finalOutcome}
       difficulty={difficulty}
       onDifficultyChange={setDifficulty}
+      theme={theme}
+      onToggleTheme={() =>
+        setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'))
+      }
       onCellClick={handleCellClick}
       onNextRound={handleNextRound}
       onResetSeries={handleResetSeries}

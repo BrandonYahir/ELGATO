@@ -24,6 +24,8 @@ type AppViewProps = {
   finalOutcome: FinalOutcome
   difficulty: Difficulty
   onDifficultyChange: (value: Difficulty) => void
+  theme: 'light' | 'dark'
+  onToggleTheme: () => void
   onCellClick: (index: number) => void
   onNextRound: () => void
   onResetSeries: () => void
@@ -44,6 +46,8 @@ const AppView = ({
   finalOutcome,
   difficulty,
   onDifficultyChange,
+  theme,
+  onToggleTheme,
   onCellClick,
   onNextRound,
   onResetSeries,
@@ -58,19 +62,35 @@ const AppView = ({
             Usuario vs GPU. Primero a {maxWins} victorias gana la serie.
           </p>
         </div>
-        <div className="scoreboard">
-          <div className="score-card">
-            <span className="label">Jugador</span>
-            <strong>{scores.player}</strong>
+        <div className="header-actions">
+          <div className="scoreboard">
+            <div className="score-card">
+              <span className="label">Jugador</span>
+              <strong>{scores.player}</strong>
+            </div>
+            <div className="score-card">
+              <span className="label">GPU</span>
+              <strong>{scores.cpu}</strong>
+            </div>
+            <div className="score-card score-round">
+              <span className="label">Ronda</span>
+              <strong>{round}</strong>
+            </div>
           </div>
-          <div className="score-card">
-            <span className="label">GPU</span>
-            <strong>{scores.cpu}</strong>
-          </div>
-          <div className="score-card score-round">
-            <span className="label">Ronda</span>
-            <strong>{round}</strong>
-          </div>
+          <label className="theme-toggle">
+            <span>Modo oscuro</span>
+            <span className="toggle">
+              <input
+                type="checkbox"
+                checked={theme === 'dark'}
+                onChange={onToggleTheme}
+                aria-label="Alternar modo oscuro"
+              />
+              <span className="toggle-track" aria-hidden="true">
+                <span className="toggle-thumb" />
+              </span>
+            </span>
+          </label>
         </div>
       </header>
 
